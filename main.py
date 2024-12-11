@@ -1,44 +1,49 @@
 import requests
-from pprint import pprint
 from bs4 import BeautifulSoup
-
+import matplotlib.pyplot as plt
 
 def get_weather_data(url: str):
     response = requests.get(url)
     soup = BeautifulSoup(response.text, "html.parser")
 
-    _header = soup.find_all("h1", class_="hdr__inner")
+    days = []
+    temperatures = []
+
     _days = soup.find_all("span", class_="hdr__inner")
-    time = soup.find_all("span", class_="text text_block text_bold_normal text_fixed margin_bottom_10")
     _table = soup.find_all("span", class_="text text_block text_bold_medium margin_bottom_10")
-    _tmp_one = []
-    _tmp_table = []
-    _tmp_time = []
-    for i in range(len(_table)):
-        if i != 0:
-            if i % 4 == 0:
-                _tmp_table.append(_tmp_one)
-                _tmp_one = []
-            _tmp_one.append(_table[i].text)
-        else:
-            _tmp_one.append(_table[i].text)
 
-    _days.pop(-1)
-    _tmp_one = []
-    for i in range(len(time)):
-        if i != 0:
-            if i % 4 == 0:
-                _tmp_time.append(_tmp_one)
-                _tmp_one = []
-            _tmp_one.append(time[i].text)
-        else:
-            _tmp_one.append(time[i].text)
+    for day in _days:
+        days.append(day.text.strip())
 
-    for i in range(len(_header)):
-        print(_header[i].text)
-        for n in range(len(_days)):
-            print(_days[n].text)
-            print(" ".join(_tmp_time[n]))
-            print(" ".join(_tmp_table[n]))
+    temp_values = []
+    for temp in _table:
+        temp_values.append(temp.text.strip())
 
-get_weather_data("https://pogoda.mail.ru/prognoz/arzamas/14dney/")
+    for i in range(0, len(temp_values), 4):
+        day_temps = list(map(lambda x: int(x.replace("+", "").replace("\u2212", "-").replace("\u00b0", "")), temp_values[i:i+4]))
+        temperatures.append(day_temps)
+
+    return days, temperatures
+
+def plot_weather(days, temperatures):
+    times_of_day = ['ночь', 'утро', 'день', 'вечер']
+
+    plt.figure(figsize=(12, 6))
+
+    for i, time in enumerate(times_of_day):
+        temps_at_time = [temps[i] for temps in temperatures]
+        plt.plot(days, temps_at_time, label=f"{time}")
+
+    plt.title("Прогноз погоды на 14 дней")
+    plt.xlabel("Дни")
+    plt.ylabel("Температура, °C")
+    plt.xticks(rotation=45)
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+    plt.show()
+
+if __name__ == "__main__":
+    url = "https://pogoda.mail.ru/prognoz/arzamas/14dney/"
+    days, temperatures = get_weather_data(url)
+    plot_weather(days, temperatures)
