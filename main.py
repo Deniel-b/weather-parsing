@@ -44,23 +44,31 @@ def predict_temperatures(temperatures):
 
 def plot_weather(days, temperatures, predicted_days, predicted_temperatures):
     times_of_day = ['ночь', 'утро', 'день', 'вечер']
+    colors = ['blue', 'orange', 'green', 'red']  # Colors for each time of day
 
     plt.figure(figsize=(12, 6))
 
     extended_days = days + predicted_days
 
-    for i, time in enumerate(times_of_day):
+    for i, (time, color) in enumerate(zip(times_of_day, colors)):
         temps_at_time = [temps[i] for temps in temperatures]
-        plt.plot(days, temps_at_time, label=f"{time}")
-
         future_temps = predicted_temperatures[i]
+
+        # Plot actual data
+        plt.plot(days, temps_at_time, label=f"{time}", color=color)
+
+        # Plot predicted data with dashed line in the same color
         future_x = extended_days[len(days):]
-        plt.plot(future_x, future_temps, linestyle="--", label=f"{time} (прогноз)")
+        plt.plot(future_x, future_temps, linestyle="--", label=f"{time} (прогноз)", color=color)
+
+        # Connect actual and predicted data with a dashed line in the same color
+        if len(days) > 0 and len(future_x) > 0:
+            plt.plot([days[-1], future_x[0]], [temps_at_time[-1], future_temps[0]], linestyle="--", color=color)
 
     plt.title("Прогноз погоды на 14 дней")
     plt.xlabel("Дни")
     plt.ylabel("Температура, °C")
-    plt.xticks(rotation=45)
+    plt.xticks(ticks=np.arange(len(days) + len(predicted_days)), labels=days + predicted_days, rotation=90)
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
