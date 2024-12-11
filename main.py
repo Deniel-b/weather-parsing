@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.linear_model import LinearRegression
 
+
 def get_weather_data(url: str):
     response = requests.get(url)
     soup = BeautifulSoup(response.text, "html.parser")
@@ -22,10 +23,12 @@ def get_weather_data(url: str):
         temp_values.append(temp.text.strip())
 
     for i in range(0, len(temp_values), 4):
-        day_temps = list(map(lambda x: int(x.replace("+", "").replace("\u2212", "-").replace("\u00b0", "")), temp_values[i:i+4]))
+        day_temps = list(
+            map(lambda x: int(x.replace("+", "").replace("\u2212", "-").replace("\u00b0", "")), temp_values[i:i + 4]))
         temperatures.append(day_temps)
 
     return days, temperatures
+
 
 def predict_temperatures(temperatures):
     times_of_day = ['ночь', 'утро', 'день', 'вечер']
@@ -42,9 +45,10 @@ def predict_temperatures(temperatures):
 
     return predictions
 
+
 def plot_weather(days, temperatures, predicted_days, predicted_temperatures):
     times_of_day = ['ночь', 'утро', 'день', 'вечер']
-    colors = ['blue', 'orange', 'green', 'red']  # Colors for each time of day
+    colors = ['blue', 'orange', 'green', 'red']
 
     plt.figure(figsize=(12, 6))
 
@@ -54,14 +58,11 @@ def plot_weather(days, temperatures, predicted_days, predicted_temperatures):
         temps_at_time = [temps[i] for temps in temperatures]
         future_temps = predicted_temperatures[i]
 
-        # Plot actual data
         plt.plot(days, temps_at_time, label=f"{time}", color=color)
 
-        # Plot predicted data with dashed line in the same color
         future_x = extended_days[len(days):]
         plt.plot(future_x, future_temps, linestyle="--", label=f"{time} (прогноз)", color=color)
 
-        # Connect actual and predicted data with a dashed line in the same color
         if len(days) > 0 and len(future_x) > 0:
             plt.plot([days[-1], future_x[0]], [temps_at_time[-1], future_temps[0]], linestyle="--", color=color)
 
@@ -73,6 +74,7 @@ def plot_weather(days, temperatures, predicted_days, predicted_temperatures):
     plt.grid(True)
     plt.tight_layout()
     plt.show()
+
 
 if __name__ == "__main__":
     url = "https://pogoda.mail.ru/prognoz/arzamas/14dney/"
