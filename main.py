@@ -1,44 +1,84 @@
 import requests
-from pprint import pprint
 from bs4 import BeautifulSoup
-
+import matplotlib.pyplot as plt
+import numpy as np
+from sklearn.linear_model import LinearRegression
 
 def get_weather_data(url: str):
     response = requests.get(url)
     soup = BeautifulSoup(response.text, "html.parser")
 
-    _header = soup.find_all("h1", class_="hdr__inner")
+    days = []
+    temperatures = []
+
     _days = soup.find_all("span", class_="hdr__inner")
-    time = soup.find_all("span", class_="text text_block text_bold_normal text_fixed margin_bottom_10")
     _table = soup.find_all("span", class_="text text_block text_bold_medium margin_bottom_10")
-    _tmp_one = []
-    _tmp_table = []
-    _tmp_time = []
-    for i in range(len(_table)):
-        if i != 0:
-            if i % 4 == 0:
-                _tmp_table.append(_tmp_one)
-                _tmp_one = []
-            _tmp_one.append(_table[i].text)
-        else:
-            _tmp_one.append(_table[i].text)
 
-    _days.pop(-1)
-    _tmp_one = []
-    for i in range(len(time)):
-        if i != 0:
-            if i % 4 == 0:
-                _tmp_time.append(_tmp_one)
-                _tmp_one = []
-            _tmp_one.append(time[i].text)
-        else:
-            _tmp_one.append(time[i].text)
+    for day in _days:
+        days.append(day.text.strip())
 
-    for i in range(len(_header)):
-        print(_header[i].text)
-        for n in range(len(_days)):
-            print(_days[n].text)
-            print(" ".join(_tmp_time[n]))
-            print(" ".join(_tmp_table[n]))
+    temp_values = []
+    for temp in _table:
+        temp_values.append(temp.text.strip())
 
-get_weather_data("https://pogoda.mail.ru/prognoz/arzamas/14dney/")
+    for i in range(0, len(temp_values), 4):
+        day_temps = list(map(lambda x: int(x.replace("+", "").replace("\u2212", "-").replace("\u00b0", "")), temp_values[i:i+4]))
+        temperatures.append(day_temps)
+
+    return days, temperatures
+
+def predict_temperatures(temperatures):
+    times_of_day = ['ночь', 'утро', 'день', 'вечер']
+    predictions = []
+
+    for i in range(4):
+        temps = [temp[i] for temp in temperatures]
+        days = np.arange(len(temps)).reshape(-1, 1)
+        model = LinearRegression()
+        model.fit(days, temps)
+        future_days = np.arange(len(temps), len(temps) + 3).reshape(-1, 1)
+        predicted_temps = model.predict(future_days).tolist()
+        predictions.append(predicted_temps)
+
+    return predictions
+
+def plot_weather(days, temperatures, predicted_days, predicted_temperatures):
+    times_of_day = ['ночь', 'утро', 'день', 'вечер']
+    colors = ['blue', 'orange', 'green', 'red']  # Colors for each time of day
+
+    plt.figure(figsize=(12, 6))
+
+    extended_days = days + predicted_days
+
+    for i, (time, color) in enumerate(zip(times_of_day, colors)):
+        temps_at_time = [temps[i] for temps in temperatures]
+        future_temps = predicted_temperatures[i]
+
+        # Plot actual data
+        plt.plot(days, temps_at_time, label=f"{time}", color=color)
+
+        # Plot predicted data with dashed line in the same color
+        future_x = extended_days[len(days):]
+        plt.plot(future_x, future_temps, linestyle="--", label=f"{time} (прогноз)", color=color)
+
+        # Connect actual and predicted data with a dashed line in the same color
+        if len(days) > 0 and len(future_x) > 0:
+            plt.plot([days[-1], future_x[0]], [temps_at_time[-1], future_temps[0]], linestyle="--", color=color)
+
+    plt.title("Прогноз погоды на 14 дней")
+    plt.xlabel("Дни")
+    plt.ylabel("Температура, °C")
+    plt.xticks(ticks=np.arange(len(days) + len(predicted_days)), labels=days + predicted_days, rotation=90)
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+    plt.show()
+
+if __name__ == "__main__":
+    url = "https://pogoda.mail.ru/prognoz/arzamas/14dney/"
+    days, temperatures = get_weather_data(url)
+
+    predicted_days = [f"День {len(days) + i + 1}" for i in range(3)]
+    predicted_temperatures = predict_temperatures(temperatures)
+
+    plot_weather(days, temperatures, predicted_days, predicted_temperatures)
