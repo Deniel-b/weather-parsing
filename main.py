@@ -1,6 +1,8 @@
 import requests
 from bs4 import BeautifulSoup
 import matplotlib.pyplot as plt
+import numpy as np
+from sklearn.linear_model import LinearRegression
 
 def get_weather_data(url: str):
     response = requests.get(url)
@@ -25,14 +27,35 @@ def get_weather_data(url: str):
 
     return days, temperatures
 
-def plot_weather(days, temperatures):
+def predict_temperatures(temperatures):
+    times_of_day = ['ночь', 'утро', 'день', 'вечер']
+    predictions = []
+
+    for i in range(4):
+        temps = [temp[i] for temp in temperatures]
+        days = np.arange(len(temps)).reshape(-1, 1)
+        model = LinearRegression()
+        model.fit(days, temps)
+        future_days = np.arange(len(temps), len(temps) + 3).reshape(-1, 1)
+        predicted_temps = model.predict(future_days).tolist()
+        predictions.append(predicted_temps)
+
+    return predictions
+
+def plot_weather(days, temperatures, predicted_days, predicted_temperatures):
     times_of_day = ['ночь', 'утро', 'день', 'вечер']
 
     plt.figure(figsize=(12, 6))
 
+    extended_days = days + predicted_days
+
     for i, time in enumerate(times_of_day):
         temps_at_time = [temps[i] for temps in temperatures]
         plt.plot(days, temps_at_time, label=f"{time}")
+
+        future_temps = predicted_temperatures[i]
+        future_x = extended_days[len(days):]
+        plt.plot(future_x, future_temps, linestyle="--", label=f"{time} (прогноз)")
 
     plt.title("Прогноз погоды на 14 дней")
     plt.xlabel("Дни")
@@ -46,4 +69,8 @@ def plot_weather(days, temperatures):
 if __name__ == "__main__":
     url = "https://pogoda.mail.ru/prognoz/arzamas/14dney/"
     days, temperatures = get_weather_data(url)
-    plot_weather(days, temperatures)
+
+    predicted_days = [f"День {len(days) + i + 1}" for i in range(3)]
+    predicted_temperatures = predict_temperatures(temperatures)
+
+    plot_weather(days, temperatures, predicted_days, predicted_temperatures)
