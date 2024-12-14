@@ -3,9 +3,10 @@ from bs4 import BeautifulSoup
 import numpy as np
 from sklearn.linear_model import LinearRegression
 import dash
-from dash import dcc, html, Input, Output, State
+from dash import dcc, html, Output
 import plotly.graph_objects as go
-
+from dash.dependencies import Input
+from time import sleep
 
 def get_weather_data(url: str):
     response = requests.get(url)
@@ -25,12 +26,10 @@ def get_weather_data(url: str):
         temp_values.append(temp.text.strip())
 
     for i in range(0, len(temp_values), 4):
-        day_temps = list(
-            map(lambda x: int(x.replace("+", "").replace("\u2212", "-").replace("\u00b0", "")), temp_values[i:i + 4]))
+        day_temps = list(map(lambda x: int(x.replace("+", "").replace("\u2212", "-").replace("\u00b0", "")), temp_values[i:i+4]))
         temperatures.append(day_temps)
 
     return days, temperatures
-
 
 def predict_temperatures(temperatures):
     times_of_day = ['ночь', 'утро', 'день', 'вечер']
@@ -47,22 +46,20 @@ def predict_temperatures(temperatures):
 
     return predictions
 
-
 def create_dash_app():
     app = dash.Dash(__name__)
 
     app.layout = html.Div([
-        html.Button("Получить данные", id="fetch-data-button", n_clicks=0),
-        dcc.Graph(id="weather-graph"),
-        html.Div(id="hidden-data", style={"display": "none"})
+        dcc.Graph(id="weather-graph")
     ])
 
     @app.callback(
         Output("weather-graph", "figure"),
-        Input("fetch-data-button", "n_clicks"),
-        prevent_initial_call=True
+        Input("weather-graph", "id"),
+        prevent_initial_call=False
     )
-    def update_graph(n_clicks):
+    def update_graph(_):
+        sleep(0.3)
         url = "https://pogoda.mail.ru/prognoz/arzamas/14dney/"
         days, temperatures = get_weather_data(url)
 
@@ -80,7 +77,6 @@ def create_dash_app():
             temps_at_time = [temps[i] for temps in temperatures]
             future_temps = predicted_temperatures[i]
 
-            # Сплошные линии для фактических данных
             fig.add_trace(go.Scatter(
                 x=days,
                 y=temps_at_time,
@@ -89,7 +85,6 @@ def create_dash_app():
                 line=dict(color=color)
             ))
 
-            # Пунктирные линии для прогнозируемых данных
             future_x = extended_days[len(days):]
             fig.add_trace(go.Scatter(
                 x=future_x,
@@ -99,7 +94,6 @@ def create_dash_app():
                 line=dict(color=color, dash='dash')
             ))
 
-            # Пунктирные соединяющие линии
             if len(days) > 0 and len(future_x) > 0:
                 fig.add_trace(go.Scatter(
                     x=[days[-1], future_x[0]],
@@ -110,17 +104,21 @@ def create_dash_app():
                 ))
 
         fig.update_layout(
-            title="Прогноз погоды на 14 дней",
+            title={
+                'text': "Прогноз погоды на 14 дней",
+                'x': 0.5,
+                'xanchor': 'center'
+            },
             xaxis_title="Дни",
             yaxis_title="Температура, °C",
             legend_title="Время суток",
-            template="plotly_white"
+            template="plotly_white",
+            transition={'duration': 500}
         )
 
         return fig
 
     return app
-
 
 if __name__ == "__main__":
     app = create_dash_app()
